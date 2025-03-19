@@ -1,11 +1,15 @@
 import pennylane as qml
 from pennylane import numpy as np
 
+from graph_generator import generate_3_regular_graph, plot_graph
+
 np.random.seed(42)
 
 n_wires = 4
 # (Jth qubit, Kth qubit)
-graph = [(0,1),(0,3),(1,2),(2,3)]
+# graph = [(0,1),(0,3),(1,2),(2,3)]
+graph = generate_3_regular_graph(n_wires)
+plot_graph(graph, title=f"3-Regular Graph with {n_wires} Nodes")
 
 # unitary operator U_B with param beta
 def U_B(beta):
@@ -14,7 +18,7 @@ def U_B(beta):
 
 # unitary operator U_C with param gamma
 def U_C(gamma):
-    for edge in graph:
+    for edge in graph.edges():
         qml.CNOT(wires=edge)
         qml.RZ(gamma, wires=edge[1])
         qml.CNOT(wires=edge)
@@ -40,11 +44,11 @@ def circuit(gammas, betas, return_samples=False):
     if return_samples:
         return qml.sample()
     
-    C = qml.sum(*(qml.Z(w1) @ qml.Z(w2) for w1,w2 in graph))
+    C = qml.sum(*(qml.Z(w1) @ qml.Z(w2) for w1,w2 in graph.edges()))
     return qml.expval(C)
 
 def objective(params):
-    return -0.5 *  (len(graph) - circuit(*params))
+    return -0.5 *  (len(graph.edges()) - circuit(*params))
 
 
 def qaoa_maxcut(n_layers = 1):
@@ -69,8 +73,8 @@ def qaoa_maxcut(n_layers = 1):
     # convert the samples bitstrings to integers
     sampled_ints = [bitstring_2_int(string) for string in bitstrs]
 
-    qml.drawer.use_style("default")
-    qml.draw_mpl(circuit)(*params, return_samples=False)
+    # qml.drawer.use_style("default")
+    # qml.draw_mpl(circuit)(*params, return_samples=False)
 
     # print optimal parameters and most frequently sampled bitstring
     counts = np.bincount(np.array(sampled_ints))
@@ -95,6 +99,7 @@ bins = np.arange(0, 17) - 0.5
 
 fig, _ = plt.subplots(1, 3, figsize=(8, 4))
 for i, samples in enumerate([int_samples1, int_samples2, int_samples3], start=1):
+# for i, samples in enumerate([int_samples1, int_samples2], start=1):
     plt.subplot(1, 3, i)
     plt.title(f"n_layers={i}")
     plt.xlabel("bitstrings")
